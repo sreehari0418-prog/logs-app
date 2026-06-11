@@ -1,0 +1,50 @@
+#creating docker compose for mysql database,backend and frontend in this project
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+    volumes:
+      - mysql-data:/var/lib/mysql
+          
+  backend:
+    build: ./backend
+    container_name: backend
+    environment:
+      DB_HOST: mysql
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: mydatabase
+      DB_PORT: 3306
+    ports:
+      - "5000:8080"
+    networks:
+      - app-network
+    depends_on:
+      - mysql
+           
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+    depends_on:
+      - backend
+
+networks:
+  app-network:
+    driver: bridge
+  
+volumes:
+  mysql-data:
