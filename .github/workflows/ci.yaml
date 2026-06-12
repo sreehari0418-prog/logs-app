@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -61,4 +64,4 @@ jobs:
           git config --global user.email "sreehari0418@gmail.com"
           git add backend-helm/values.yaml frontend-helm/values.yaml
           git commit -m "Update image tags in Helm values.yaml"
-          git push logs-app main
+          git push origin main
