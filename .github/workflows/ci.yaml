@@ -40,6 +40,9 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v4
 
+      - name: Restore kubeconfig
+        run: echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+
       - name: deploy frontend
         run: |
           helm upgrade --install frontend ./frontend-helm --set image.repository=${{ secrets.DOCKER_USERNAME }}/frontend --set image.tag=${{ github.sha }}
