@@ -43,7 +43,14 @@ jobs:
       - name: Restore kubeconfig
         run: |
           mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > "$HOME/.kube/config"
+          printf '%s' "${{ secrets.KUBECONFIG_DATA }}" > "$HOME/.kube/config"
+          if ! kubectl config view >/dev/null 2>&1; then
+            echo "KUBECONFIG_DATA did not parse as raw kubeconfig, trying base64 decode"
+            printf '%s' "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > "$HOME/.kube/config" || {
+              echo "ERROR: KUBECONFIG_DATA is neither valid raw kubeconfig nor valid base64";
+              exit 1;
+            }
+          fi
 
       - name: Verify Kubernetes connection
         run: |
