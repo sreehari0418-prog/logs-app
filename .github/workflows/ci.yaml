@@ -26,43 +26,39 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/backend:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/backend:latest
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/frontend:latest
-  deploy:
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+#add a job that update the new image tag in helm values.yaml file and then commit and push the changes to the repository
+  update-helm:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Restore kubeconfig
+      - name: Update backend image tag in Helm values.yaml
         run: |
-          mkdir -p "$HOME/.kube"
-          printf '%s' "${{ secrets.KUBECONFIG_DATA }}" > "$HOME/.kube/config"
-          if ! kubectl config view >/dev/null 2>&1; then
-            echo "KUBECONFIG_DATA did not parse as raw kubeconfig, trying base64 decode"
-            printf '%s' "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > "$HOME/.kube/config" || {
-              echo "ERROR: KUBECONFIG_DATA is neither valid raw kubeconfig nor valid base64";
-              exit 1;
-            }
-          fi
+          sed -i "s|repository: infhari/backend|repository: ${{ secrets.DOCKER_USERNAME }}/backend|g" backend-helm/values.yaml
+          sed -i "s|tag:.*|tag: \"${{ github.sha }}\"|g" backend-helm/values.yaml
 
-      - name: Verify Kubernetes connection
+      - name: Update frontend image tag in Helm values.yaml
         run: |
-          kubectl version --client
-          kubectl config view
-          kubectl get nodes
+          sed -i "s|repository: infhari/frontend|repository: ${{ secrets.DOCKER_USERNAME }}/frontend|g" frontend-helm/values.yaml
+          sed -i "s|tag:.*|tag: \"${{ github.sha }}\"|g" frontend-helm/values.yaml
 
-      - name: deploy frontend
+      - name: Commit and push changes
         run: |
-          helm upgrade --install frontend ./frontend-helm --set image.repository=${{ secrets.DOCKER_USERNAME }}/frontend --set image.tag=${{ github.sha }}
-
-      - name: deploy backend
-        run: |
-          helm upgrade --install backend ./backend-helm --set image.repository=${{ secrets.DOCKER_USERNAME }}/backend --set image.tag=${{ github.sha }}      
-
+          git config --global user.name "sreehari0418-prog"
+          git config --global user.email "sreehari0418@gmail.com"
+          git add backend-helm/values.yaml frontend-helm/values.yaml
+          git commit -m "Update image tags in Helm values.yaml"
+          git push origin main
